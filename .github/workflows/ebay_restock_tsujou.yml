@@ -1,0 +1,54 @@
+name: eBay Restock - 通常 (japanesehappinessshop)
+
+on:
+  schedule:
+    # 金/土/日/火 2:00 JST = 木/金/土/月 17:00 UTC
+    - cron: '0 17 * * 1,4,5,6'
+  workflow_dispatch:  # 手動実行ボタン
+
+jobs:
+  restock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run restock (通常, limit=3000)
+        run: python tsujou/ebay_restock.py --yes --limit=3000 2>&1 | tee /tmp/task1_tsujou_output.txt; exit ${PIPESTATUS[0]}
+        env:
+          TSUJOU_TOKEN: ${{ secrets.TSUJOU_TOKEN }}
+          APP_ID: ${{ secrets.APP_ID }}
+          DEV_ID: ${{ secrets.DEV_ID }}
+          CERT_ID: ${{ secrets.CERT_ID }}
+
+      - name: Commit auto_excluded_ids changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add tsujou/auto_excluded_ids.txt
+          git diff --cached --quiet || git commit -m "Auto-update tsujou/auto_excluded_ids.txt [$(date '+%Y-%m-%d %H:%M')]"
+          git push
+        continue-on-error: true
+
+      - name: Send result email
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: gen7m9@gmail.com
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "タスク1（通常）実行結果 (${{ github.run_number }}回目)"
+          body: file:///tmp/task1_tsujou_output.txt
+          to: gen7m9@gmail.com
+          from: gen7m9@gmail.com

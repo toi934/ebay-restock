@@ -1,0 +1,54 @@
+name: eBay Restock - 専門 (japanese_selectshop)
+
+on:
+  schedule:
+    # 金/土/日/火 0:30 JST = 木/金/土/月 15:30 UTC
+    - cron: '30 15 * * 1,4,5,6'
+  workflow_dispatch:  # 手動実行ボタン
+
+jobs:
+  restock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run restock (専門)
+        run: python senmon/ebay_restock.py --yes 2>&1 | tee /tmp/task1_senmon_output.txt; exit ${PIPESTATUS[0]}
+        env:
+          SENMON_TOKEN: ${{ secrets.SENMON_TOKEN }}
+          APP_ID: ${{ secrets.APP_ID }}
+          DEV_ID: ${{ secrets.DEV_ID }}
+          CERT_ID: ${{ secrets.CERT_ID }}
+
+      - name: Commit auto_excluded_ids changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add senmon/auto_excluded_ids.txt
+          git diff --cached --quiet || git commit -m "Auto-update senmon/auto_excluded_ids.txt [$(date '+%Y-%m-%d %H:%M')]"
+          git push
+        continue-on-error: true
+
+      - name: Send result email
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: gen7m9@gmail.com
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "タスク1（専門）実行結果 (${{ github.run_number }}回目)"
+          body: file:///tmp/task1_senmon_output.txt
+          to: gen7m9@gmail.com
+          from: gen7m9@gmail.com
