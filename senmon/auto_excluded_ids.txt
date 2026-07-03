@@ -1,6 +1,7 @@
 # 自動除外リスト（専門アカウント: japanese_selectshop）
-# フォーマット: ItemID	# YYYY-MM-DD 理由
+# フォーマット: ItemID\t# YYYY-MM-DD 理由
 # GitHub Actions がrunのたびにコミットで更新する
+377074750024	# 2026-07-03 (manual) 手動除外
 376434826832	# 2026-06-28 (manual) ポリシー違反削除済み
 375636695570	# 2026-06-26 (manual) 手動除外
 375901911156	# 2026-06-23 (manual) 手動除外
@@ -24,4 +25,4 @@
 377053733390	# 2026-05-29 (manual) 手動除外
 376586766873	# 2026-06-09 (manual) 手動除外
 376976401395	# 2026-06-09 (manual) 手動除外
-376434210651	# 2026-06-13 Listing removed for policy violation
+376434210651	# 2026-06-13 Listing removed for policy violation (Season of Hell)
