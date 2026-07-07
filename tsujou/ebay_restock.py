@@ -264,7 +264,16 @@ def parse_limit():
     return None
 
 
+# ★★★ 一時停止フラグ（2026/07/07 在庫切れキャンセル急増の原因調査のため戸井さん指示で一時停止）★★★
+# 再開する場合はここを False に戻すだけでOK（他のロジックは一切変更していません）
+PAUSED = True
+
 def main():
+    if PAUSED:
+        print("[PAUSED] 在庫切れキャンセル急増の原因調査のため一時停止中です。処理はスキップされました。")
+        print("[PAUSED] 再開するには ebay_restock.py の PAUSED = True を False に変更してください。")
+        return
+
     dry_run = "--dry-run" in sys.argv
     auto_yes = "--yes" in sys.argv
     limit = parse_limit()
