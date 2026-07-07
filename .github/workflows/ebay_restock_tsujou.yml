@@ -1,9 +1,9 @@
 name: eBay Restock - 通常 (japanesehappinessshop)
 
 on:
-  schedule:
+#   schedule:
     # 金/土/日/火 2:00 JST = 木/金/土/月 17:00 UTC
-    - cron: '0 17 * * 1,4,5,6'
+#     - cron: '0 17 * * 1,4,5,6'
   workflow_dispatch:  # 手動実行ボタン
 
 jobs:
