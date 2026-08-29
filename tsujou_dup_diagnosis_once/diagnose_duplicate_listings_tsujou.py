@@ -82,7 +82,7 @@ def call_api(call_name, xml_body):
 
 
 def get_all_listings_with_tracking():
-    """本番get_all_listings()と完全に同一のクエストXML・ページングループ構造だが、
+    """本番get_all_listings()と完全に同一のリクエストXML・ページングループ構造だが、
     診断のため各Itemについて (page番号, ItemID, QuantityAvailable, Variations有無) を
     全件記録する。ページング方法・EntriesPerPage=200・Sort未指定・ループ終了条件
     `len(all_items) >= total` はいずれも本番と同一（一切変更していない）。"""
@@ -133,7 +133,7 @@ def analyze_duplicates(label, id_list_with_page):
     dup_id_count = len(dup_items)
     extra_rows = total_rows - unique_ids
 
-    print("  [" + label + "] 紏行数（重複含む）: " + str(total_rows))
+    print("  [" + label + "] 総行数（重複含む）: " + str(total_rows))
     print("  [" + label + "] ユニークItem ID数: " + str(unique_ids))
     print("  [" + label + "] 重複しているItem ID数（2回以上出現）: " + str(dup_id_count))
     print("  [" + label + "] 重複による余剰行数（総行数-ユニーク数）: " + str(extra_rows))
@@ -191,11 +191,11 @@ def main():
     print("[確認1] GetMyeBaySellingリクエストのSort指定")
     print("  本番get_all_listings()のXMLリクエストには <ActiveList><Sort>...</Sort></ActiveList>")
     print("  に相当する要素は存在しない（Pagination/EntriesPerPage・PageNumberのみ指定）。")
-    print("  → ソート順はeBay側のデフォルト実装依存である、明示的な安定ソート（例:")
+    print("  → ソート順はeBay側のデフォルト実装依存であり、明示的な安定ソート（例:")
     print("    ItemIDを一意なタイブレーカーとしたソート）は指定されていない。")
 
     print("")
-    print("全出品リスト取得中（本番get_all_listings()と同一ロジック・診断用にpage/Qty/Variations#��記録）...")
+    print("全出品リスト取得中（本番get_all_listings()と同一ロジック・診断用にpage/Qty/Variationsを記録）...")
     page_sizes, item_log, reported_total = get_all_listings_with_tracking()
     total_fetched = len(item_log)
 
@@ -239,7 +239,7 @@ def main():
     print("-" * 70)
     print("[確認6] 本番0→1処理で同一Item IDを複数回ReviseInventoryStatusする可能性")
     print("  本番ebay_restock.py（通常・専門とも共通ロジック）は、取得したitems一覧を")
-    print("  for文でそのまま走査し、Qty=0かつ除外リスト非該当かVariations無しの商品を")
+    print("  for文でそのまま走査し、Qty=0かつ除外リスト非該当かつVariations無しの商品を")
     print("  out_of_stockリストへID重複排除なしでappendする。続くQty更新ループも")
     print("  out_of_stockリストをそのままBATCH_SIZE=4でバッチ処理するため、")
     print("  同一Item IDがitems一覧に複数回含まれていれば、out_of_stockにも複数回appendされ、")
