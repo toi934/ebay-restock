@@ -1,0 +1,37 @@
+name: eBay全出品取得 重複調査（通常・読み取り専用・1回限り）
+
+on:
+  push:
+    paths:
+      - "tsujou_dup_diagnosis_once/**"
+      - ".github/workflows/duplicate_listing_diagnosis_once.yml"
+
+concurrency:
+  group: dup-diagnosis-once-tsujou
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r tsujou_dup_diagnosis_once/requirements.txt
+
+      - name: 重複取得診断（読み取り専用・Qty変更なし・git pushなし）
+        working-directory: tsujou_dup_diagnosis_once
+        env:
+          TSUJOU_TOKEN: ${{ secrets.TSUJOU_TOKEN }}
+          APP_ID: ${{ secrets.APP_ID }}
+          DEV_ID: ${{ secrets.DEV_ID }}
+          CERT_ID: ${{ secrets.CERT_ID }}
+        run: python diagnose_duplicate_listings_tsujou.py
