@@ -1,0 +1,63 @@
+name: HARU統合DRAFT 検証dry-run（通常・1回限り）
+
+on:
+  push:
+    paths:
+      - "tsujou_haru_dryrun_once/**"
+      - ".github/workflows/haru_integration_dryrun_once.yml"
+
+concurrency:
+  group: haru-integration-dryrun-once-tsujou
+  cancel-in-progress: false
+
+jobs:
+  haru-dryrun-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r tsujou_haru_dryrun_once/requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: HARU CSVダウンロード（通常アカウント）
+        working-directory: tsujou_haru_dryrun_once
+        env:
+          HARU_USER_ID: ${{ secrets.HARU_USER_ID }}
+          HARU_PASSWORD: ${{ secrets.HARU_PASSWORD }}
+        run: python test_haru_csv_download_tsujou.py
+
+      - name: CSV→xlsx変換
+        working-directory: tsujou_haru_dryrun_once
+        run: python convert_haru_csv_to_xlsx_tsujou.py
+
+      - name: HARU統合DRAFT dry-run実行（★--dry-run固定・Qty更新は絶対に呼ばれません★）
+        working-directory: tsujou_haru_dryrun_once
+        env:
+          TSUJOU_TOKEN: ${{ secrets.TSUJOU_TOKEN }}
+          APP_ID: ${{ secrets.APP_ID }}
+          DEV_ID: ${{ secrets.DEV_ID }}
+          CERT_ID: ${{ secrets.CERT_ID }}
+        run: python "ebay_restock_HARU統合案_DRAFT.py" --dry-run --yes
+
+      - name: 検証用ファイルをArtifactとして保存（gitへのpush・commitは一切行いません）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: haru-dryrun-verify-tsujou
+          path: |
+            tsujou_haru_dryrun_once/*.csv
+            tsujou_haru_dryrun_once/*.xlsx
+            tsujou_haru_dryrun_once/*_結果.txt
+          if-no-files-found: warn
+          retention-days: 14
