@@ -121,8 +121,16 @@ def call_api(call_name, xml_body):
 
 
 def get_all_listings():
+    # ★Fix B(2026/08/30確定・戸井さん承認・タスク8工程1): ページング終了判定を
+    # 「重複込みの累計取得件数」ではなく「ユニークItem ID数」基準に変更。
+    # あわせて無限ループ防止の安全上限(MAX_PAGES)を追加。Fix C(Sort指定)は今回は
+    # 触らない。全出品を1回で丸ごと取得する既存の全体構造は変更していない。
     all_items = []
+    unique_ids_seen = set()
     page = 1
+    MAX_PAGES = 150
+    ns = {"ns": "urn:ebay:apis:eBLBaseComponents"}
+    total = 0
     while True:
         xml = """<?xml version="1.0" encoding="utf-8"?>
 <GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
@@ -132,17 +140,25 @@ def get_all_listings():
 </GetMyeBaySellingRequest>"""
         response = call_api("GetMyeBaySelling", xml)
         root = ET.fromstring(response)
-        ns = {"ns": "urn:ebay:apis:eBLBaseComponents"}
         items = root.findall(".//ns:ItemArray/ns:Item", ns)
         if not items:
             break
         all_items.extend(items)
+        for _it in items:
+            _id_el = _it.find("ns:ItemID", ns)
+            if _id_el is not None and _id_el.text:
+                unique_ids_seen.add(_id_el.text)
         total_el = root.find(".//ns:ActiveList/ns:PaginationResult/ns:TotalNumberOfEntries", ns)
         total = int(total_el.text) if total_el is not None else 0
-        print("取得中... " + str(len(all_items)) + " / " + str(total) + " 件")
-        if len(all_items) >= total:
+        print("取得中... 累計(重複込み) " + str(len(all_items)) + " 件 / ユニーク " + str(len(unique_ids_seen)) + " 件 / 報告総数 " + str(total) + " 件（ページ" + str(page) + "）")
+        if len(unique_ids_seen) >= total:
+            print("[Fix B] ユニークItem ID数(" + str(len(unique_ids_seen)) + ")が報告総数(" + str(total) + ")に到達したため終了します。")
+            break
+        if page >= MAX_PAGES:
+            print("[Fix B 安全上限到達] MAX_PAGES=" + str(MAX_PAGES) + " に達したため強制終了します。ユニーク " + str(len(unique_ids_seen)) + " / 報告総数 " + str(total) + " 件（未到達の可能性あり・要調査）。")
             break
         page += 1
+    print("[Fix B 最終結果] 累計(重複込み) " + str(len(all_items)) + " 件 / ユニーク " + str(len(unique_ids_seen)) + " 件 / 報告総数 " + str(total) + " 件 / 一致: " + str(len(unique_ids_seen) == total))
     return all_items
 
 
@@ -329,19 +345,27 @@ def main():
 
     print("全出品リスト取得中...")
     items = get_all_listings()
-    print("合計取得件数: " + str(len(items)) + " 件")
+    print("合計取得件数（重複込み・生データ）: " + str(len(items)) + " 件")
     ns = {"ns": "urn:ebay:apis:eBLBaseComponents"}
     out_of_stock = []
     excluded = []
     skipped_variations = []
+    seen_processed_ids = set()  # ★Fix A(2026/08/30確定・戸井さん承認・タスク8工程1): Item ID重複処理防止★
+    duplicate_skip_count = 0
     for item in items:
-        qty_el = item.find("ns:QuantityAvailable", ns)
         item_id_el = item.find("ns:ItemID", ns)
+        item_id = item_id_el.text if item_id_el is not None else None
+        if item_id is None:
+            continue
+        if item_id in seen_processed_ids:
+            duplicate_skip_count += 1
+            continue
+        seen_processed_ids.add(item_id)
+        qty_el = item.find("ns:QuantityAvailable", ns)
         title_el = item.find("ns:Title", ns)
         variations_el = item.find("ns:Variations", ns)
-        if qty_el is not None and item_id_el is not None:
+        if qty_el is not None:
             if int(qty_el.text) == 0:
-                item_id = item_id_el.text
                 title = title_el.text if title_el is not None else "不明"
                 if item_id in all_excluded_set:
                     excluded.append({"id": item_id, "title": title})
@@ -349,6 +373,7 @@ def main():
                     skipped_variations.append({"id": item_id, "title": title})
                 else:
                     out_of_stock.append({"id": item_id, "title": title})
+    print("[Fix A] 重複ItemIDによりスキップした件数: " + str(duplicate_skip_count) + " 件 / 処理したユニークItemID数: " + str(len(seen_processed_ids)) + " 件")
 
     # ============================================================
     # ★DRAFT新規追加: HARU在庫あり(S列=1)条件によるAND絞り込み★
